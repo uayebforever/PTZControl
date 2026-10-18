@@ -2,7 +2,7 @@
 name = "PTZControl"
 version = "0.1.0"
 description = "PTZ Camera Controller system"
-requires-python = ">=3.14"
+requires-python = ">=3.12"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
@@ -10,6 +10,8 @@ classifiers = [
 
 dependencies = [
     "pydantic",
+    "pyside6",
+    "pygame",
 ]
 
 [dependency-groups]

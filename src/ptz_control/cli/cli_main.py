@@ -1,94 +1,55 @@
 import argparse
 import logging
 import sys
-import traceback
 from typing import List
 
-from .commands.root_command import RootCommand
 from .exit_codes import ExitCode
 from .. import log_config
-from ..exceptions import ApplicationError, UserError, ConfigError
+from ..exceptions import ApplicationError, UserError
 
 log = logging.getLogger(__name__)
 
 
 def main() -> int:
-    exit_code = interrupt_wrapper(_cli_arguments_excluding_command_name())
-    return exit_code.value
-
-
-def interrupt_wrapper(unparsed_arguments: List[str]) -> ExitCode:
     try:
-        return main_with_args(unparsed_arguments)
+        return main_with_args(sys.argv[1:]).value
     except KeyboardInterrupt:
         print("Ctrl-C received: Exiting...", file=sys.stderr)
-        return ExitCode.USER_INTERRUPT
+        return ExitCode.USER_INTERRUPT.value
 
 
 def main_with_args(unparsed_arguments: List[str]) -> ExitCode:
+    args = _parse_args(unparsed_arguments)
+    _configure_logging(args)
+
     try:
-        parsed_arguments = _parse_args(unparsed_arguments)
-    except ConfigError as err:
-        print("error with configuration: " + str(err), file=sys.stderr)
-        return ExitCode.ARGUMENT_ERROR
-    except argparse.ArgumentError as err:
-        print("argument parsing error: " + str(err), file=sys.stderr)
-        return ExitCode.ARGUMENT_ERROR
-    except RuntimeError as err:
-        print("application startup error: " + str(err), file=sys.stderr)
-        return ExitCode.UNEXPECTED_ERROR
+        from ..gui.app import run as run_gui
 
-    _configure_logging(parsed_arguments, unparsed_arguments)
-
-    return run_application(parsed_arguments)
-
-
-def run_application(parsed_arguments: argparse.Namespace) -> ExitCode:
-    """Run the business logic for the command found in the arguments"""
-    try:
-        parsed_arguments.command_executable(parsed_arguments)
+        run_gui()
     except UserError as err:
-        print("User error: " + err.args[0], file=sys.stderr)
+        print("User error: " + str(err), file=sys.stderr)
         return ExitCode.USER_ERROR
     except ApplicationError as err:
-        print("Application error: " + err.args[0], file=sys.stderr)
+        print("Application error: " + str(err), file=sys.stderr)
         return ExitCode.APPLICATION_ERROR
     except Exception as exception:
-        if isinstance(exception, InterruptedError):
-            raise exception
         log.exception("Unexpected error!", exc_info=exception)
-        for line in traceback.format_exception(exception):
-            for l in  line.split("\n"):
-                log.debug(l.strip("\n"))
-
         print("Unexpected error: " + str(exception), file=sys.stderr)
         return ExitCode.UNEXPECTED_ERROR
 
     return ExitCode.OK
 
 
-def _configure_logging(args, unparsed_arguments):
-    if args.debug:
-        log_config.configure_logging(log_config.LogLevel.ON)
-    else:
-        log_config.configure_logging(log_config.LogLevel.OFF)
-    log.info("Unparsed CLI Arguments: %s", unparsed_arguments)
-    log.info("Parsed CLI Arguments: %s", args)
-
-
-def _get_arg_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="ptz-control", exit_on_error=False)
-    root_command = RootCommand()
-    root_command.configure_parsers_and_sub_parsers(parser)
-    parser.set_defaults(global_parser=parser)
-
-    return parser
+def _configure_logging(args: argparse.Namespace) -> None:
+    log_config.configure_logging(log_config.LogLevel.ON if args.debug else log_config.LogLevel.OFF)
+    log.info("Parsed CLI arguments: %s", args)
 
 
 def _parse_args(unparsed_arguments: List[str]) -> argparse.Namespace:
-    arg_parser = _get_arg_parser()
-    return arg_parser.parse_args(unparsed_arguments)
-
-
-def _cli_arguments_excluding_command_name():
-    return sys.argv[1:]
+    parser = argparse.ArgumentParser(prog="ptz-control", exit_on_error=False)
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable debug logging to the console and to ptz-control.log.",
+    )
+    return parser.parse_args(unparsed_arguments)

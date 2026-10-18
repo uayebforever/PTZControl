@@ -1,6 +1,6 @@
 {
   "include": [
-    "src/clan_stats",
+    "src/ptz_control",
     "tests_src"
   ],
   "extraPaths": [
