@@ -1,5 +1,6 @@
 import logging
 
+from PySide6.QtCore import QTimer
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
     QFormLayout,
@@ -12,7 +13,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..control.manual_control import ManualControlLoop
+from ..control.manual_control import DEFAULT_POLL_HZ, ManualControlLoop
 from ..input.controller import ControllerNotFoundError, MotionInput
 from ..input.xbox import XboxController
 from ..ptz.camera import PTZCamera, PTZCameraError
@@ -36,6 +37,7 @@ class MainWindow(QWidget):
         self._camera: PTZCamera | None = None
         self._controller: MotionInput | None = None
         self._control_loop: ManualControlLoop | None = None
+        self._control_timer: QTimer | None = None
 
         self._host_input = QLineEdit("192.168.1.100")
         self._port_input = QLineEdit(str(DEFAULT_PORT))
@@ -111,11 +113,33 @@ class MainWindow(QWidget):
 
         self._controller = controller
         self._control_loop = ManualControlLoop(controller, self._camera)
-        self._control_loop.start()
+
+        # Xbox controller polling pumps SDL's OS event queue, which on some
+        # platforms (macOS) must happen on the application's main thread.
+        # A QTimer ticks the control loop from here -- the Qt main thread --
+        # rather than from a background thread.
+        timer = QTimer(self)
+        timer.setInterval(round(1000 / DEFAULT_POLL_HZ))
+        timer.timeout.connect(self._on_control_tick)
+        timer.start()
+        self._control_timer = timer
+
         self._control_button.setText("Stop Xbox Control")
         self._status_label.setText("Xbox control active")
 
+    def _on_control_tick(self) -> None:
+        assert self._control_loop is not None
+        try:
+            self._control_loop.tick()
+        except Exception as err:
+            log.exception("Manual control loop failed; stopping.")
+            self._stop_control_loop()
+            QMessageBox.critical(self, "Controller error", str(err))
+
     def _stop_control_loop(self) -> None:
+        if self._control_timer is not None:
+            self._control_timer.stop()
+            self._control_timer = None
         if self._control_loop is not None:
             self._control_loop.stop()
             self._control_loop = None

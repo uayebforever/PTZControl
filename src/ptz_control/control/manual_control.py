@@ -1,17 +1,11 @@
-import logging
-import threading
-import time
-
 from ..input.controller import MotionInput, MotionState
 from ..ptz.camera import PanTiltVelocity, PTZCamera, ZoomVelocity
 
-log = logging.getLogger(__name__)
-
-_DEFAULT_POLL_HZ = 30.0
+DEFAULT_POLL_HZ = 30.0
 
 
 class ManualControlLoop:
-    """Continuously reads a MotionInput and drives a PTZCamera from it.
+    """Polls a MotionInput once per tick() and drives a PTZCamera from it.
 
     This is the one piece of code in the application that depends on both
     the input abstraction and the camera abstraction. Swapping the Xbox
@@ -19,47 +13,26 @@ class ManualControlLoop:
     writing a new MotionInput and pointing an instance of this loop at it
     -- nothing here, in the camera layer, or in the input layer needs to
     change.
+
+    This class does not schedule itself: call tick() repeatedly from
+    whatever timer or loop the host application uses, on the same thread
+    that opened the MotionInput (see MotionInput for why that matters).
+    Scheduling is a platform/runtime concern that belongs to the caller,
+    not to this glue logic.
     """
 
-    def __init__(
-        self,
-        motion_input: MotionInput,
-        camera: PTZCamera,
-        poll_hz: float = _DEFAULT_POLL_HZ,
-    ) -> None:
+    def __init__(self, motion_input: MotionInput, camera: PTZCamera) -> None:
         self._motion_input = motion_input
         self._camera = camera
-        self._poll_interval = 1.0 / poll_hz
-        self._thread: threading.Thread | None = None
-        self._stop_event = threading.Event()
         self._last_state = MotionState.neutral()
 
-    @property
-    def is_running(self) -> bool:
-        return self._thread is not None and self._thread.is_alive()
-
-    def start(self) -> None:
-        if self.is_running:
-            return
-        self._stop_event.clear()
-        self._thread = threading.Thread(target=self._run, name="ManualControlLoop", daemon=True)
-        self._thread.start()
+    def tick(self) -> None:
+        """Poll the motion input once and apply the result to the camera."""
+        self._apply(self._motion_input.poll())
 
     def stop(self) -> None:
-        self._stop_event.set()
-        if self._thread is not None:
-            self._thread.join(timeout=2.0)
-            self._thread = None
+        """Stop all camera motion. Call once the caller has stopped ticking."""
         self._camera.stop()
-
-    def _run(self) -> None:
-        while not self._stop_event.is_set():
-            try:
-                self._apply(self._motion_input.poll())
-            except Exception:
-                log.exception("Error in manual control loop; stopping.")
-                return
-            time.sleep(self._poll_interval)
 
     def _apply(self, state: MotionState) -> None:
         if state != self._last_state:

@@ -35,6 +35,11 @@ class MotionInput(ABC):
     OpenCV-based tracker later) only need to produce a MotionState when
     polled. Nothing that consumes a MotionInput needs to know what kind of
     device -- or eventually, what kind of algorithm -- is behind it.
+
+    Thread contract: open(), close() and poll() must all be called from
+    the same thread. Implementations backed by an OS-level event pump
+    (e.g. XboxController, via SDL) require that thread to be the
+    application's main thread on some platforms (notably macOS).
     """
 
     @abstractmethod

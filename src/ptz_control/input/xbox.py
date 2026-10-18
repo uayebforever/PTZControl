@@ -22,6 +22,12 @@ class XboxController(MotionInput):
     Left stick drives pan/tilt. Triggers drive zoom: right trigger zooms
     in (tele), left trigger zooms out (wide). Preset buttons are not yet
     wired up -- preset_recall/preset_save are always None for now.
+
+    open(), close() and poll() must all be called from the application's
+    main thread. pygame's joystick support pumps SDL's OS event queue
+    (pygame.event.pump() in poll(), implicitly in open()/close()), and on
+    macOS Cocoa requires that pump to run on the main thread -- calling
+    it from a background thread crashes the process.
     """
 
     def __init__(self, joystick_index: int = 0, deadzone: float = _DEFAULT_DEADZONE) -> None:

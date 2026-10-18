@@ -1,3 +1,3 @@
-from .manual_control import ManualControlLoop
+from .manual_control import DEFAULT_POLL_HZ, ManualControlLoop
 
-__all__ = ["ManualControlLoop"]
+__all__ = ["DEFAULT_POLL_HZ", "ManualControlLoop"]
