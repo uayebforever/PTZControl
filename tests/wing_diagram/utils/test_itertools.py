@@ -1,6 +1,6 @@
 import pytest
 
-from wing_diagram.util.itertools import rest, only
+from ptz_control.util.itertools import rest, only
 
 
 def test_rest_no_elements():

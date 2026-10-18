@@ -8,7 +8,7 @@ from .version import VersionCommand
 
 
 class RootCommand(Command):
-    name = "wing_diagram"
+    name = "ptz_control"
     help = "A tool to generate WING mixer routing diagrams."
     subcommands = [VersionCommand(), TestCommand()]
 

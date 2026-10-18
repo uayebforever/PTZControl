@@ -77,7 +77,7 @@ def _configure_logging(args, unparsed_arguments):
 
 
 def _get_arg_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="clan-stats", exit_on_error=False)
+    parser = argparse.ArgumentParser(prog="ptz-control", exit_on_error=False)
     root_command = RootCommand()
     root_command.configure_parsers_and_sub_parsers(parser)
     parser.set_defaults(global_parser=parser)

@@ -25,7 +25,7 @@ DEFAULT_LOGGING_CONFIG = {
             "format": "LOG: %(message)s",
         },
         "package_formatter": {
-            "()": "wing_diagram.log_config.PackageLogFormatter"
+            "()": "ptz_control.log_config.PackageLogFormatter"
         }
     },
     "handlers": {
@@ -61,7 +61,7 @@ def configure_logging(level: LogLevel) -> None:
         logger = logging.getLogger(logger_name)
         logger.setLevel(level.value)
         if level is LogLevel.ON:
-            file_handler_path = Path(".").joinpath("clan-stats.log")
+            file_handler_path = Path(".").joinpath("ptz-control.log")
             file_handler = logging.FileHandler(file_handler_path)
             file_handler.setFormatter(PackageLogFormatter())
             file_handler.setLevel(level.value)

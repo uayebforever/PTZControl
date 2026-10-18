@@ -1,4 +1,4 @@
-from wing_diagram.util.set_helpers import find_differences
+from ptz_control.util.set_helpers import find_differences
 
 def test_find_differences() -> None:
 

@@ -1,6 +1,6 @@
 from argparse import ArgumentParser
 
-from wing_diagram import __version__ as package_version
+from ptz_control import __version__ as package_version
 from .command import Command
 
 
@@ -17,4 +17,4 @@ class VersionCommand(Command):
 
 
 def print_version():
-    print(f"wing_diagram version: {package_version}")
+    print(f"ptz_control version: {package_version}")

@@ -1,8 +1,8 @@
 [project]
-name = "wing_diagram"
+name = "PTZControl"
 version = "0.1.0"
-description = "WING Mixer diagramming tool"
-requires-python = "~=3.12"
+description = "PTZ Camera Controller system"
+requires-python = ">=3.14"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
@@ -24,7 +24,7 @@ dev = [
 ]
 
 [project.scripts]
-wing_diagram = "wing_diagram.__main__:main"
+ptz-control = "ptz_control.__main__:main"
 
 [project.urls]
 "Homepage" = "https://github.com/pypa/sampleproject"

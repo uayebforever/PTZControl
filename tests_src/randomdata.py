@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import TypeVar, Type, Callable, Sequence
 
-from wing_diagram.util.time import now
+from ptz_control.util.time import now
 
 _T = TypeVar("_T")
 
