@@ -1,6 +1,7 @@
 {
+  "pythonVersion": "3.14",
   "include": [
-    "src/clan_stats",
+    "src/ptz_control",
     "tests_src"
   ],
   "extraPaths": [
@@ -12,5 +13,6 @@
   "reportDeprecated": "none",
   "reportExplicitAny": "none",
   "reportImplicitOverride": "none",
-  "reportPrivateLocalImportUsage": "none"
+  "reportPrivateLocalImportUsage": "none",
+  "reportUnusedCallResult": "none"
 }

@@ -54,14 +54,8 @@ def is_empty(iterable: Iterable[_T]) -> bool:
 def not_empty(iterable: Iterable[_T]) -> bool:
     return not is_empty(iterable)
 
-def key_sort() -> Callable[[Tuple[_K, _V]],_K]:
+def key_sort() -> Callable[[Tuple[_K, object]],_K]:
     return lambda i: i[0]
 
-def value_sort() -> Callable[[Tuple[_K, _V]],_V]:
+def value_sort() -> Callable[[Tuple[object, _V]],_V]:
     return lambda i: i[1]
-
-def key_filter(predicate: Callable[[_K], bool]) -> Callable[[Tuple[_K, _V]],_K]:
-    return lambda i: predicate(i[0])
-
-def value_filter(predicate: Callable[[_K], bool]) -> Callable[[Tuple[_K, _V]],_K]:
-    return lambda i: predicate(i[1])
