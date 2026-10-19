@@ -1,4 +1,5 @@
 import logging
+from typing import final
 
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QCloseEvent
@@ -22,6 +23,7 @@ from ..ptz.visca import DEFAULT_PORT, ViscaOverIpCamera
 log = logging.getLogger(__name__)
 
 
+@final
 class MainWindow(QWidget):
     """Minimal control panel: connect to a camera, then drive it with an Xbox controller.
 

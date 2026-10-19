@@ -1,6 +1,9 @@
+from typing import final
+
 from .camera import PanTiltVelocity, PTZCamera, PTZCameraError, ZoomVelocity
 
 
+@final
 class MockPTZCamera(PTZCamera):
     """In-memory PTZCamera for development and tests without real hardware.
 

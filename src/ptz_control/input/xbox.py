@@ -1,4 +1,5 @@
 import logging
+from typing import final
 
 import pygame
 
@@ -13,9 +14,10 @@ _AXIS_LEFT_STICK_Y = 1
 _AXIS_LEFT_TRIGGER = 2
 _AXIS_RIGHT_TRIGGER = 5
 
-_DEFAULT_DEADZONE = 0.15
+_DEFAULT_DEADZONE = 0.01
 
 
+@final
 class XboxController(MotionInput):
     """MotionInput driven by an Xbox controller via pygame's joystick API.
 

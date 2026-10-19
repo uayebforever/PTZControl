@@ -2,9 +2,11 @@ from datetime import datetime, timedelta
 
 from logging import getLogger
 
+from typing_extensions import final
+
 log = getLogger(__name__)
 
-
+@final
 class Stopwatch:
 
     @classmethod

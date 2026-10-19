@@ -1,9 +1,12 @@
+from typing import final
+
 from ..input.controller import MotionInput, MotionState
 from ..ptz.camera import PanTiltVelocity, PTZCamera, ZoomVelocity
 
 DEFAULT_POLL_HZ = 30.0
 
 
+@final
 class ManualControlLoop:
     """Polls a MotionInput once per tick() and drives a PTZCamera from it.
 

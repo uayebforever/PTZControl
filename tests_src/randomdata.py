@@ -1,28 +1,18 @@
 import random
 import string
-from datetime import datetime, timezone
 from enum import Enum
 from typing import TypeVar, Type, Callable, Sequence
 
-from ptz_control.util.time import now
-
 _T = TypeVar("_T")
+_T_Enum = TypeVar("_T_Enum", bound=Enum)
 
 
 def random_string(length: int = 8) -> str:
     return "".join(random.sample(string.ascii_letters, length))
 
 
-def random_int(max=100000000) -> int:
+def random_int(max: int =100000000) -> int:
     return random.randint(0, max)
-
-
-def random_datetime() -> datetime:
-    return datetime.fromtimestamp(now().timestamp() - random_int(1_000_000), timezone.utc)
-
-
-_T_Enum = TypeVar("_T_Enum", bound=Enum)
-
 
 def random_enum(enum: Type[_T_Enum]) -> _T_Enum:
     return random.choice(list(enum))

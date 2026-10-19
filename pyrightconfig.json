@@ -1,4 +1,5 @@
 {
+  "pythonVersion": "3.14",
   "include": [
     "src/ptz_control",
     "tests_src"
@@ -12,5 +13,6 @@
   "reportDeprecated": "none",
   "reportExplicitAny": "none",
   "reportImplicitOverride": "none",
-  "reportPrivateLocalImportUsage": "none"
+  "reportPrivateLocalImportUsage": "none",
+  "reportUnusedCallResult": "none"
 }

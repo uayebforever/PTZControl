@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from types import TracebackType
 
 
 class ControllerNotFoundError(RuntimeError):
@@ -58,5 +59,10 @@ class MotionInput(ABC):
         self.open()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    def __exit__(
+    self,
+    type_: type[BaseException] | None,
+    value: BaseException | None,
+    traceback: TracebackType | None,
+) -> bool | None:
         self.close()

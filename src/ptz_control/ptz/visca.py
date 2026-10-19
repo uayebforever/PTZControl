@@ -1,5 +1,6 @@
 import logging
 import socket
+from typing import final
 
 from .camera import PanTiltVelocity, PTZCamera, PTZCameraError, ZoomVelocity
 
@@ -25,6 +26,7 @@ _TILT_STOP, _TILT_UP, _TILT_DOWN = 0x03, 0x01, 0x02
 _MIN_PRESET_NUMBER, _MAX_PRESET_NUMBER = 0, 127
 
 
+@final
 class ViscaOverIpCamera(PTZCamera):
     """PTZ camera backend for PTZOptics-style VISCA-over-IP (UDP)."""
 
