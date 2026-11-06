@@ -12,6 +12,10 @@ log = logging.getLogger(__name__)
 _RETRY_DELAY_S = 0.2
 
 
+def _default_capture(location: str | int) -> Any:
+    return cv2.VideoCapture(location)  # pyright: ignore[reportAny]
+
+
 @final
 class OpenCvVideoSource(VideoSource):
     """Reads an RTSP/HTTP URL, file, or local device index with cv2.VideoCapture.
@@ -24,7 +28,7 @@ class OpenCvVideoSource(VideoSource):
     def __init__(
             self,
             location: str | int,
-            capture_factory: Callable[[str | int], Any] = lambda location: cv2.VideoCapture(location),  # pyright: ignore[reportAny]
+            capture_factory: Callable[[str | int], Any] = _default_capture,
     ) -> None:
         self._location = location
         self._capture_factory = capture_factory
