@@ -15,6 +15,7 @@ _AXIS_LEFT_TRIGGER = 2
 _AXIS_RIGHT_TRIGGER = 5
 
 _DEFAULT_DEADZONE = 0.01
+_TRIGGER_DEADZONE = 0.05
 
 
 @final
@@ -36,6 +37,8 @@ class XboxController(MotionInput):
         self._joystick_index = joystick_index
         self._deadzone = deadzone
         self._joystick: pygame.joystick.JoystickType | None = None
+        # Triggers whose axis has reported something other than exactly 0.0 yet.
+        self._triggers_seen_active: set[int] = set()
 
     def open(self) -> None:
         if not pygame.get_init():
@@ -46,6 +49,7 @@ class XboxController(MotionInput):
         joystick = pygame.joystick.Joystick(self._joystick_index)
         joystick.init()
         self._joystick = joystick
+        self._triggers_seen_active = set()
         log.info("Opened controller: %s", joystick.get_name())
 
     def close(self) -> None:
@@ -64,8 +68,8 @@ class XboxController(MotionInput):
         # up produces positive tilt, matching MotionState's convention.
         tilt = -self._apply_deadzone(self._joystick.get_axis(_AXIS_LEFT_STICK_Y))
 
-        zoom_in = self._normalize_trigger(self._joystick.get_axis(_AXIS_RIGHT_TRIGGER))
-        zoom_out = self._normalize_trigger(self._joystick.get_axis(_AXIS_LEFT_TRIGGER))
+        zoom_in = self._read_trigger(self._joystick, _AXIS_RIGHT_TRIGGER)
+        zoom_out = self._read_trigger(self._joystick, _AXIS_LEFT_TRIGGER)
 
         return MotionState(pan=pan, tilt=tilt, zoom=zoom_in - zoom_out)
 
@@ -75,7 +79,15 @@ class XboxController(MotionInput):
         sign = 1.0 if value > 0 else -1.0
         return sign * (abs(value) - self._deadzone) / (1.0 - self._deadzone)
 
-    @staticmethod
-    def _normalize_trigger(value: float) -> float:
-        # SDL reports triggers in [-1.0 (released), 1.0 (fully pressed)].
-        return max(0.0, (value + 1.0) / 2.0)
+    def _read_trigger(self, joystick: pygame.joystick.JoystickType, axis: int) -> float:
+        value = joystick.get_axis(axis)
+        # SDL reports triggers in [-1.0 (released), 1.0 (fully pressed)], but
+        # some backends report an untouched trigger as exactly 0.0 until it is
+        # first moved, which would read as half-pressed (constant zoom). Treat
+        # an exact 0.0 as released until the axis has reported anything else.
+        if value != 0.0:
+            self._triggers_seen_active.add(axis)
+        elif axis not in self._triggers_seen_active:
+            return 0.0
+        normalized = max(0.0, (value + 1.0) / 2.0)
+        return 0.0 if normalized < _TRIGGER_DEADZONE else normalized
