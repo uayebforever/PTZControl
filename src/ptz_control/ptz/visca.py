@@ -25,6 +25,11 @@ _MAX_ZOOM_SPEED = 0x07
 # steps (1 and 2) in proportion, via error diffusion, across successive
 # move() commands. Set False for plain rounding.
 DITHER_SPEED_STEPS = True
+# When dithering, also allow speeds below step 1 (e.g. 0.3) by alternating
+# between stopped and step 1, so the lowest nonzero stick values give an
+# average speed lower than the camera's slowest step. Pulsing stop/go may
+# look jerky on some cameras; set False to keep step 1 as the floor.
+DITHER_BELOW_MIN_STEP = True
 
 _PAN_STOP, _PAN_LEFT, _PAN_RIGHT = 0x03, 0x01, 0x02
 _TILT_STOP, _TILT_UP, _TILT_DOWN = 0x03, 0x01, 0x02
@@ -131,8 +136,15 @@ def _axis_speed_and_direction(
         if dither is not None:
             dither.reset()
         return min_speed, stop_code
-    fractional = min_speed + abs(value) * (max_speed - min_speed)
+    below_min = dither is not None and DITHER_SPEED_STEPS and DITHER_BELOW_MIN_STEP
+    if below_min:
+        # Full stick range maps onto 0..max_speed so small values fall below step 1.
+        fractional = abs(value) * max_speed
+    else:
+        fractional = min_speed + abs(value) * (max_speed - min_speed)
     speed = dither.quantize(fractional) if dither is not None else round(fractional)
+    if speed < min_speed and below_min:
+        return min_speed, stop_code  # off-beat of the stop/go pulse
     speed = max(min_speed, min(max_speed, speed))
     direction = positive_code if value > 0 else negative_code
     return speed, direction

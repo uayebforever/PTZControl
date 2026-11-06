@@ -98,8 +98,7 @@ def test_connect_failure_raises_ptz_camera_error():
 
 
 def test_fractional_speed_alternates_between_adjacent_steps(camera, udp_listener):
-    # pan value giving a fractional step of 1.5: 1 + v*(24-1) = 1.5
-    value = 0.5 / 23
+    value = 1.5 / 24
     speeds = []
     for _ in range(10):
         camera.move(PanTiltVelocity(pan=value, tilt=0.0))
@@ -111,7 +110,7 @@ def test_fractional_speed_alternates_between_adjacent_steps(camera, udp_listener
 
 
 def test_dither_resets_after_stop(camera, udp_listener):
-    value = 0.4 / 23
+    value = 0.4 / 24
     first = []
     for _ in range(2):
         camera.move(PanTiltVelocity(pan=value, tilt=0.0))
@@ -119,3 +118,16 @@ def test_dither_resets_after_stop(camera, udp_listener):
         camera.move(PanTiltVelocity.stop())
         udp_listener.recvfrom(64)
     assert first[0] == first[1]
+
+
+def test_sub_step_speed_pulses_between_stop_and_step_one(camera, udp_listener):
+    value = 0.25 / 24  # a quarter of the slowest step
+    packets = []
+    for _ in range(8):
+        camera.move(PanTiltVelocity(pan=value, tilt=0.0))
+        packets.append(udp_listener.recvfrom(64)[0])
+
+    moving = [p for p in packets if p[6] == 0x02]
+    stopped = [p for p in packets if p[6] == 0x03]
+    assert all(p[4] == 1 for p in moving)
+    assert len(moving) == 2 and len(stopped) == 6
