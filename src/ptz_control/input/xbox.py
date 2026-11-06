@@ -1,4 +1,5 @@
 import logging
+import sys
 from typing import final
 
 import pygame
@@ -7,11 +8,15 @@ from .controller import ControllerNotFoundError, MotionInput, MotionState
 
 log = logging.getLogger(__name__)
 
-# SDL's standard Xbox controller axis layout (consistent across the
-# Windows/Mac/Linux backends pygame uses).
+# Axis layout of pygame's raw joystick API for an Xbox controller. The sticks
+# and right trigger agree across platforms, but the left trigger does not:
+# Linux (xpad) puts it on axis 2 with the right stick on 3/4, whereas the
+# Windows/macOS backends put the right stick on 2/3 and the left trigger on 4.
+# Reading axis 2 as the left trigger on Windows/macOS actually reads the right
+# stick's X axis, which is why that trigger appeared dead.
 _AXIS_LEFT_STICK_X = 0
 _AXIS_LEFT_STICK_Y = 1
-_AXIS_LEFT_TRIGGER = 2
+_AXIS_LEFT_TRIGGER = 2 if sys.platform.startswith("linux") else 4
 _AXIS_RIGHT_TRIGGER = 5
 
 _DEFAULT_DEADZONE = 0.01
