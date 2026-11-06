@@ -19,9 +19,14 @@ from ..input.controller import ControllerNotFoundError, MotionInput, MotionState
 from ..input.xbox import XboxController
 from ..ptz.camera import PTZCamera, PTZCameraError
 from ..ptz.visca import DEFAULT_PORT, ViscaOverIpCamera
+from ..video.opencv_source import OpenCvVideoSource
+from ..video.source import VideoSource, VideoSourceError
 from .motion_display import MotionDisplay
+from .video_widget import VideoWidget
 
 log = logging.getLogger(__name__)
+
+VIDEO_REFRESH_HZ = 30.0
 
 
 @final
@@ -41,9 +46,19 @@ class MainWindow(QWidget):
         self._controller: MotionInput | None = None
         self._control_loop: ManualControlLoop | None = None
         self._control_timer: QTimer | None = None
+        self._video_source: VideoSource | None = None
+        self._video_timer = QTimer(self)
+        self._video_timer.setInterval(round(1000 / VIDEO_REFRESH_HZ))
+        self._video_timer.timeout.connect(self._on_video_tick)
 
         self._host_input = QLineEdit("192.168.1.100")
         self._port_input = QLineEdit(str(DEFAULT_PORT))
+
+        self._video_url_input = QLineEdit()
+        self._video_url_input.setPlaceholderText("rtsp://192.168.1.100/1 (or device index, e.g. 0)")
+        self._video_button = QPushButton("Start Video")
+        self._video_button.clicked.connect(self._on_video_clicked)
+        self._video_widget = VideoWidget()
 
         self._connect_button = QPushButton("Connect")
         self._connect_button.clicked.connect(self._on_connect_clicked)
@@ -58,16 +73,51 @@ class MainWindow(QWidget):
         form = QFormLayout()
         form.addRow("Camera host", self._host_input)
         form.addRow("Port", self._port_input)
+        form.addRow("Video URL", self._video_url_input)
 
         buttons = QHBoxLayout()
         buttons.addWidget(self._connect_button)
         buttons.addWidget(self._control_button)
+        buttons.addWidget(self._video_button)
 
         layout = QVBoxLayout(self)
         layout.addLayout(form)
         layout.addLayout(buttons)
+        layout.addWidget(self._video_widget, stretch=1)
         layout.addWidget(self._motion_display)
         layout.addWidget(self._status_label)
+
+    def _on_video_clicked(self) -> None:
+        if self._video_source is not None:
+            self._stop_video()
+            return
+
+        text = self._video_url_input.text().strip()
+        if not text:
+            QMessageBox.warning(self, "No video URL", "Enter a stream URL or device index.")
+            return
+        source = OpenCvVideoSource(int(text) if text.isdigit() else text)
+        try:
+            source.open()
+        except VideoSourceError as err:
+            QMessageBox.critical(self, "Video failed", str(err))
+            return
+
+        self._video_source = source
+        self._video_timer.start()
+        self._video_button.setText("Stop Video")
+
+    def _on_video_tick(self) -> None:
+        if self._video_source is not None:
+            self._video_widget.set_frame(self._video_source.latest_frame())
+
+    def _stop_video(self) -> None:
+        self._video_timer.stop()
+        if self._video_source is not None:
+            self._video_source.close()
+            self._video_source = None
+        self._video_widget.set_frame(None)
+        self._video_button.setText("Start Video")
 
     def _on_connect_clicked(self) -> None:
         if self._camera is not None:
@@ -158,5 +208,6 @@ class MainWindow(QWidget):
             self._status_label.setText("Connected")
 
     def closeEvent(self, event: QCloseEvent) -> None:
+        self._stop_video()
         self._disconnect_camera()
         super().closeEvent(event)

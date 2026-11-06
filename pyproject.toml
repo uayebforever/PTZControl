@@ -12,6 +12,7 @@ dependencies = [
     "pydantic",
     "pyside6",
     "pygame-ce",
+    "opencv-python-headless",
 ]
 
 [dependency-groups]
