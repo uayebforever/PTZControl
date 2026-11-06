@@ -16,7 +16,7 @@ class MotionDisplay(QWidget):
     _STICK_SIZE = 140
     _ZOOM_WIDTH = 24
     _GAP = 20
-    _READOUT_WIDTH = 96
+    _READOUT_WIDTH = 80
 
     def __init__(self) -> None:
         super().__init__()
@@ -54,7 +54,9 @@ class MotionDisplay(QWidget):
         self._paint_readout(painter, readout_rect)
 
     def _paint_readout(self, painter: QPainter, rect: QRectF) -> None:
-        painter.setFont(QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont))
+        font = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont)
+        font.setPointSizeF(8.0)
+        painter.setFont(font)
         painter.setPen(self.palette().color(QPalette.ColorRole.WindowText))
         text = f"Pan  {self._state.pan:+.3f}\nTilt {self._state.tilt:+.3f}\nZoom {self._state.zoom:+.3f}"
         painter.drawText(rect, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft, text)
