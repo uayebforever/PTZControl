@@ -1,10 +1,16 @@
+import time
+from collections.abc import Callable
 from typing import final
 
 from ..input.controller import MotionInput, MotionState
 from ..ptz.camera import PanTiltVelocity, PTZCamera, ZoomVelocity
 from .response_curve import PAN_TILT_EXPONENT, ZOOM_EXPONENT, apply_curve
+from .speed_ramp import SpeedRamp
 
 DEFAULT_POLL_HZ = 30.0
+# Longest time step fed to the speed ramps, so a stalled UI thread does not
+# cause one huge jump in speed afterwards.
+_MAX_DT = 0.1
 
 
 @final
@@ -25,10 +31,19 @@ class ManualControlLoop:
     not to this glue logic.
     """
 
-    def __init__(self, motion_input: MotionInput, camera: PTZCamera) -> None:
+    def __init__(
+        self,
+        motion_input: MotionInput,
+        camera: PTZCamera,
+        clock: Callable[[], float] = time.monotonic,
+    ) -> None:
         self._motion_input = motion_input
         self._camera = camera
-        self._last_state = MotionState.neutral()
+        self._clock = clock
+        self._last_time: float | None = None
+        self._ramps = {name: SpeedRamp() for name in ("pan", "tilt", "zoom")}
+        self._last_pan_tilt = PanTiltVelocity.stop()
+        self._last_zoom = ZoomVelocity.stop()
 
     def tick(self) -> MotionState:
         """Poll the motion input once, apply it to the camera, and return it.
@@ -43,18 +58,32 @@ class ManualControlLoop:
 
     def stop(self) -> None:
         """Stop all camera motion. Call once the caller has stopped ticking."""
+        for ramp in self._ramps.values():
+            ramp.reset()
+        self._last_pan_tilt = PanTiltVelocity.stop()
+        self._last_zoom = ZoomVelocity.stop()
         self._camera.stop()
 
     def _apply(self, state: MotionState) -> None:
-        if state != self._last_state:
-            self._camera.move(
-                PanTiltVelocity(
-                    pan=apply_curve(state.pan, PAN_TILT_EXPONENT),
-                    tilt=apply_curve(state.tilt, PAN_TILT_EXPONENT),
-                )
-            )
-            self._camera.zoom(ZoomVelocity(value=apply_curve(state.zoom, ZOOM_EXPONENT)))
-            self._last_state = state
+        now = self._clock()
+        dt = 0.0 if self._last_time is None else min(max(now - self._last_time, 0.0), _MAX_DT)
+        self._last_time = now
+
+        pan_tilt = PanTiltVelocity(
+            pan=self._ramps["pan"].step(apply_curve(state.pan, PAN_TILT_EXPONENT), dt),
+            tilt=self._ramps["tilt"].step(apply_curve(state.tilt, PAN_TILT_EXPONENT), dt),
+        )
+        zoom = ZoomVelocity(value=self._ramps["zoom"].step(apply_curve(state.zoom, ZOOM_EXPONENT), dt))
+
+        # While moving, pan/tilt is re-sent every tick even if unchanged: the
+        # camera backend may alternate between adjacent integer speed steps
+        # from one command to the next to approximate fractional speeds.
+        if pan_tilt != self._last_pan_tilt or pan_tilt != PanTiltVelocity.stop():
+            self._camera.move(pan_tilt)
+            self._last_pan_tilt = pan_tilt
+        if zoom != self._last_zoom:
+            self._camera.zoom(zoom)
+            self._last_zoom = zoom
         if state.preset_recall is not None:
             self._camera.recall_preset(state.preset_recall)
         if state.preset_save is not None:
