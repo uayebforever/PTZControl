@@ -15,10 +15,11 @@ from PySide6.QtWidgets import (
 )
 
 from ..control.manual_control import DEFAULT_POLL_HZ, ManualControlLoop
-from ..input.controller import ControllerNotFoundError, MotionInput
+from ..input.controller import ControllerNotFoundError, MotionInput, MotionState
 from ..input.xbox import XboxController
 from ..ptz.camera import PTZCamera, PTZCameraError
 from ..ptz.visca import DEFAULT_PORT, ViscaOverIpCamera
+from .motion_display import MotionDisplay
 
 log = logging.getLogger(__name__)
 
@@ -52,6 +53,7 @@ class MainWindow(QWidget):
         self._control_button.clicked.connect(self._on_control_clicked)
 
         self._status_label = QLabel("Disconnected")
+        self._motion_display = MotionDisplay()
 
         form = QFormLayout()
         form.addRow("Camera host", self._host_input)
@@ -64,6 +66,7 @@ class MainWindow(QWidget):
         layout = QVBoxLayout(self)
         layout.addLayout(form)
         layout.addLayout(buttons)
+        layout.addWidget(self._motion_display)
         layout.addWidget(self._status_label)
 
     def _on_connect_clicked(self) -> None:
@@ -132,7 +135,8 @@ class MainWindow(QWidget):
     def _on_control_tick(self) -> None:
         assert self._control_loop is not None
         try:
-            self._control_loop.tick()
+            state = self._control_loop.tick()
+            self._motion_display.set_state(state)
         except Exception as err:
             log.exception("Manual control loop failed; stopping.")
             self._stop_control_loop()
@@ -149,6 +153,7 @@ class MainWindow(QWidget):
             self._controller.close()
             self._controller = None
         self._control_button.setText("Start Xbox Control")
+        self._motion_display.set_state(MotionState.neutral())
         if self._camera is not None:
             self._status_label.setText("Connected")
 
