@@ -20,6 +20,17 @@ _MIN_PAN_SPEED, _MAX_PAN_SPEED = 0x01, 0x18
 _MIN_TILT_SPEED, _MAX_TILT_SPEED = 0x01, 0x14
 _MAX_ZOOM_SPEED = 0x07
 
+# The camera only accepts whole speed steps. When True, a fractional target
+# speed (e.g. 1.4) is approximated by alternating between the neighbouring
+# steps (1 and 2) in proportion, via error diffusion, across successive
+# move() commands. Set False for plain rounding.
+DITHER_SPEED_STEPS = True
+# When dithering, also allow speeds below step 1 (e.g. 0.3) by alternating
+# between stopped and step 1, so the lowest nonzero stick values give an
+# average speed lower than the camera's slowest step. Pulsing stop/go may
+# look jerky on some cameras; set False to keep step 1 as the floor.
+DITHER_BELOW_MIN_STEP = True
+
 _PAN_STOP, _PAN_LEFT, _PAN_RIGHT = 0x03, 0x01, 0x02
 _TILT_STOP, _TILT_UP, _TILT_DOWN = 0x03, 0x01, 0x02
 
@@ -40,6 +51,8 @@ class ViscaOverIpCamera(PTZCamera):
         self._port = port
         self._address_byte = 0x80 | camera_address
         self._socket: socket.socket | None = None
+        self._pan_dither = _Dither(DITHER_SPEED_STEPS)
+        self._tilt_dither = _Dither(DITHER_SPEED_STEPS)
 
     def connect(self) -> None:
         if self._socket is not None:
@@ -60,10 +73,10 @@ class ViscaOverIpCamera(PTZCamera):
 
     def move(self, velocity: PanTiltVelocity) -> None:
         pan_speed, pan_direction = _axis_speed_and_direction(
-            velocity.pan, _MIN_PAN_SPEED, _MAX_PAN_SPEED, _PAN_LEFT, _PAN_RIGHT, _PAN_STOP
+            velocity.pan, _MIN_PAN_SPEED, _MAX_PAN_SPEED, _PAN_LEFT, _PAN_RIGHT, _PAN_STOP, self._pan_dither
         )
         tilt_speed, tilt_direction = _axis_speed_and_direction(
-            velocity.tilt, _MIN_TILT_SPEED, _MAX_TILT_SPEED, _TILT_DOWN, _TILT_UP, _TILT_STOP
+            velocity.tilt, _MIN_TILT_SPEED, _MAX_TILT_SPEED, _TILT_DOWN, _TILT_UP, _TILT_STOP, self._tilt_dither
         )
         self._send(0x01, 0x06, 0x01, pan_speed, tilt_speed, pan_direction, tilt_direction)
 
@@ -91,12 +104,48 @@ class ViscaOverIpCamera(PTZCamera):
             raise PTZCameraError(f"Failed to send VISCA command to {self._host}:{self._port}: {err}") from err
 
 
+class _Dither:
+    """First-order error diffusion from fractional to whole speed steps."""
+
+    def __init__(self, enabled: bool) -> None:
+        self._enabled = enabled
+        self._error = 0.0
+
+    def quantize(self, fractional: float) -> int:
+        if not self._enabled:
+            return round(fractional)
+        wanted = fractional + self._error
+        chosen = round(wanted)
+        self._error = wanted - chosen
+        return chosen
+
+    def reset(self) -> None:
+        self._error = 0.0
+
+
 def _axis_speed_and_direction(
-    value: float, min_speed: int, max_speed: int, negative_code: int, positive_code: int, stop_code: int
+    value: float,
+    min_speed: int,
+    max_speed: int,
+    negative_code: int,
+    positive_code: int,
+    stop_code: int,
+    dither: _Dither | None = None,
 ) -> tuple[int, int]:
     if value == 0.0:
+        if dither is not None:
+            dither.reset()
         return min_speed, stop_code
-    speed = round(min_speed + abs(value) * (max_speed - min_speed))
+    below_min = dither is not None and DITHER_SPEED_STEPS and DITHER_BELOW_MIN_STEP
+    if below_min:
+        # Full stick range maps onto 0..max_speed so small values fall below step 1.
+        fractional = abs(value) * max_speed
+    else:
+        fractional = min_speed + abs(value) * (max_speed - min_speed)
+    speed = dither.quantize(fractional) if dither is not None else round(fractional)
+    if speed < min_speed and below_min:
+        return min_speed, stop_code  # off-beat of the stop/go pulse
+    speed = max(min_speed, min(max_speed, speed))
     direction = positive_code if value > 0 else negative_code
     return speed, direction
 
