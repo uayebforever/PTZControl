@@ -29,9 +29,11 @@ class ManualControlLoop:
         self._camera = camera
         self._last_state = MotionState.neutral()
 
-    def tick(self) -> None:
-        """Poll the motion input once and apply the result to the camera."""
-        self._apply(self._motion_input.poll())
+    def tick(self) -> MotionState:
+        """Poll the motion input once, apply it to the camera, and return it."""
+        state = self._motion_input.poll()
+        self._apply(state)
+        return state
 
     def stop(self) -> None:
         """Stop all camera motion. Call once the caller has stopped ticking."""
