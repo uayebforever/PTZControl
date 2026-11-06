@@ -24,6 +24,9 @@ log = logging.getLogger(__name__)
 
 
 @final
+DEFAULT_HOST = "192.168.1.100"
+
+
 class MainWindow(QWidget):
     """Minimal control panel: connect to a camera, then drive it with an Xbox controller.
 
@@ -32,7 +35,7 @@ class MainWindow(QWidget):
     logic of its own.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, camera_host: str | None = None) -> None:
         super().__init__()
         self.setWindowTitle("PTZ Control")
 
@@ -41,7 +44,7 @@ class MainWindow(QWidget):
         self._control_loop: ManualControlLoop | None = None
         self._control_timer: QTimer | None = None
 
-        self._host_input = QLineEdit("192.168.1.100")
+        self._host_input = QLineEdit(camera_host or DEFAULT_HOST)
         self._port_input = QLineEdit(str(DEFAULT_PORT))
 
         self._connect_button = QPushButton("Connect")
