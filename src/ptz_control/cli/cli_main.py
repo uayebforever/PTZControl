@@ -25,7 +25,7 @@ def main_with_args(unparsed_arguments: List[str]) -> ExitCode:
     try:
         from ..gui.app import run as run_gui
 
-        run_gui()
+        run_gui(camera_host=args.camera_host)
     except UserError as err:
         print("User error: " + str(err), file=sys.stderr)
         return ExitCode.USER_ERROR
@@ -47,6 +47,14 @@ def _configure_logging(args: argparse.Namespace) -> None:
 
 def _parse_args(unparsed_arguments: List[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog="ptz-control", exit_on_error=False)
+    parser.add_argument(
+        "--camera-host",
+        "--camera-ip",
+        dest="camera_host",
+        metavar="HOST",
+        default=None,
+        help="Camera IP address or hostname to pre-fill in the GUI (editable there).",
+    )
     parser.add_argument(
         "--debug",
         action="store_true",
