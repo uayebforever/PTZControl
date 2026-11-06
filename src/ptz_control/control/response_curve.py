@@ -9,7 +9,7 @@ Tune the feel of the camera by editing the two constants below.
 #   3.0 = strong: very fine control over the central range, speed rises
 #         steeply as the stick approaches its extreme
 # Full deflection always maps to full speed regardless of the exponent.
-PAN_TILT_EXPONENT = 3.0
+PAN_TILT_EXPONENT = 2.0
 ZOOM_EXPONENT = 2.0
 
 
