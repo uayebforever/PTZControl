@@ -1,3 +1,4 @@
+from ptz_control.control.response_curve import PAN_TILT_EXPONENT, apply_curve
 from ptz_control.control.manual_control import ManualControlLoop
 from ptz_control.input.controller import MotionInput, MotionState
 from ptz_control.ptz.camera import PanTiltVelocity, ZoomVelocity
@@ -27,8 +28,21 @@ def test_tick_applies_motion_state_to_camera():
     motion_input.state = MotionState(pan=0.5, tilt=-0.5, zoom=1.0)
     loop.tick()
 
-    assert camera.velocity == PanTiltVelocity(pan=0.5, tilt=-0.5)
+    assert camera.velocity == PanTiltVelocity(
+        pan=apply_curve(0.5, PAN_TILT_EXPONENT), tilt=-apply_curve(0.5, PAN_TILT_EXPONENT)
+    )
     assert camera.zoom_velocity == ZoomVelocity(value=1.0)
+
+
+def test_small_deflection_is_much_slower_than_linear():
+    motion_input = FakeMotionInput()
+    camera = MockPTZCamera()
+    camera.connect()
+    loop = ManualControlLoop(motion_input, camera)
+
+    motion_input.state = MotionState(pan=0.3)
+    loop.tick()
+    assert 0.0 < camera.velocity.pan < 0.3
 
 
 def test_tick_applies_preset_actions():

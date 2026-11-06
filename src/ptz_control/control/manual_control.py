@@ -2,6 +2,7 @@ from typing import final
 
 from ..input.controller import MotionInput, MotionState
 from ..ptz.camera import PanTiltVelocity, PTZCamera, ZoomVelocity
+from .response_curve import PAN_TILT_EXPONENT, ZOOM_EXPONENT, apply_curve
 
 DEFAULT_POLL_HZ = 30.0
 
@@ -30,7 +31,12 @@ class ManualControlLoop:
         self._last_state = MotionState.neutral()
 
     def tick(self) -> MotionState:
-        """Poll the motion input once, apply it to the camera, and return it."""
+        """Poll the motion input once, apply it to the camera, and return it.
+
+        The returned state is the raw (unshaped) controller position; the
+        response curve in response_curve.py is applied only to what is sent
+        to the camera.
+        """
         state = self._motion_input.poll()
         self._apply(state)
         return state
@@ -41,8 +47,13 @@ class ManualControlLoop:
 
     def _apply(self, state: MotionState) -> None:
         if state != self._last_state:
-            self._camera.move(PanTiltVelocity(pan=state.pan, tilt=state.tilt))
-            self._camera.zoom(ZoomVelocity(value=state.zoom))
+            self._camera.move(
+                PanTiltVelocity(
+                    pan=apply_curve(state.pan, PAN_TILT_EXPONENT),
+                    tilt=apply_curve(state.tilt, PAN_TILT_EXPONENT),
+                )
+            )
+            self._camera.zoom(ZoomVelocity(value=apply_curve(state.zoom, ZOOM_EXPONENT)))
             self._last_state = state
         if state.preset_recall is not None:
             self._camera.recall_preset(state.preset_recall)

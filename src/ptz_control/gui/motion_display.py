@@ -1,7 +1,7 @@
 from typing import final, override
 
 from PySide6.QtCore import QPointF, QRectF, QSize, Qt
-from PySide6.QtGui import QColor, QPaintEvent, QPainter, QPalette, QPen
+from PySide6.QtGui import QColor, QFontDatabase, QPaintEvent, QPainter, QPalette, QPen
 from PySide6.QtWidgets import QSizePolicy, QWidget
 
 from ..input.controller import MotionState
@@ -10,11 +10,13 @@ from .geometry import clamp_to_unit_disc
 
 @final
 class MotionDisplay(QWidget):
-    """Live view of a MotionState: a joystick dot for pan/tilt, a bar for zoom."""
+    """Live view of a MotionState: a joystick dot for pan/tilt, a bar for zoom,
+    and a numeric readout of the raw (pre-response-curve) values."""
 
     _STICK_SIZE = 140
     _ZOOM_WIDTH = 24
     _GAP = 20
+    _READOUT_WIDTH = 80
 
     def __init__(self) -> None:
         super().__init__()
@@ -28,7 +30,7 @@ class MotionDisplay(QWidget):
 
     @override
     def sizeHint(self) -> QSize:
-        return QSize(self._STICK_SIZE + self._GAP + self._ZOOM_WIDTH + 8, self._STICK_SIZE + 8)
+        return QSize(self._STICK_SIZE + self._GAP + self._ZOOM_WIDTH + self._GAP + self._READOUT_WIDTH + 8, self._STICK_SIZE + 8)
 
     @override
     def minimumSizeHint(self) -> QSize:
@@ -41,13 +43,23 @@ class MotionDisplay(QWidget):
         palette = self.palette()
         outline = QPen(palette.color(QPalette.ColorRole.Mid), 1.5)
         accent = palette.color(QPalette.ColorRole.Highlight)
-        total_w = self._STICK_SIZE + self._GAP + self._ZOOM_WIDTH
+        total_w = self._STICK_SIZE + self._GAP + self._ZOOM_WIDTH + self._GAP + self._READOUT_WIDTH
         left = (self.width() - total_w) / 2
         top = (self.height() - self._STICK_SIZE) / 2
 
         self._paint_stick(painter, QRectF(left, top, self._STICK_SIZE, self._STICK_SIZE), outline, accent)
         zoom_rect = QRectF(left + self._STICK_SIZE + self._GAP, top, self._ZOOM_WIDTH, self._STICK_SIZE)
         self._paint_zoom(painter, zoom_rect, outline, accent)
+        readout_rect = QRectF(zoom_rect.right() + self._GAP, top, self._READOUT_WIDTH, self._STICK_SIZE)
+        self._paint_readout(painter, readout_rect)
+
+    def _paint_readout(self, painter: QPainter, rect: QRectF) -> None:
+        font = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont)
+        font.setPointSizeF(8.0)
+        painter.setFont(font)
+        painter.setPen(self.palette().color(QPalette.ColorRole.WindowText))
+        text = f"Pan  {self._state.pan:+.3f}\nTilt {self._state.tilt:+.3f}\nZoom {self._state.zoom:+.3f}"
+        painter.drawText(rect, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft, text)
 
     def _paint_stick(self, painter: QPainter, rect: QRectF, outline: QPen, accent: QColor) -> None:
         painter.setPen(outline)
