@@ -49,5 +49,6 @@ def test_zero_is_real_half_press_once_axis_has_moved(mocker: MockerFixture) -> N
 def test_right_stick_axis_is_not_read_as_a_trigger(mocker: MockerFixture) -> None:
     # Axis 2 is the right stick X on Windows/macOS; a small deflection there
     # must not produce zoom.
-    controller, _ = make_controller(mocker, {LT: -1.0, RT: -1.0, 2: 0.02, 3: 0.03})
+    right_stick_x = 2 if LT != 2 else 3
+    controller, _ = make_controller(mocker, {LT: -1.0, RT: -1.0, right_stick_x: 0.02})
     assert controller.poll().zoom == 0.0
