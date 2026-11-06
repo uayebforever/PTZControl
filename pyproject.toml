@@ -12,7 +12,7 @@ dependencies = [
     "pydantic",
     "pyside6",
     "pygame-ce",
-    "opencv-python-headless",
+    "opencv-python-headless<5",  # 5.x macOS wheels bundle libSDL2, clashing with pygame-ce
 ]
 
 [dependency-groups]
